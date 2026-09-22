@@ -99,7 +99,7 @@ class WhiteIP_Plugin implements Typecho_Plugin_Interface
                 // 误操作紧急通道，去掉下行注释即可放行全部地址
                 //$allow_ip[] = '0.0.0.0';
                 
-                $location_url = trim($config->location_url) ? trim($config->location_url) : 'https://www.google.com/';
+                $location_url = trim($config->location_url) ? trim($config->location_url) : 'https://www.google.com/ncr';
                 if(!in_array('0.0.0.0', $allow_ip)) {
                     if(!in_array($real_ip, $allow_ip)) {
                         Typecho_Cookie::delete('__typecho_uid');
