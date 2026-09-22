@@ -78,7 +78,16 @@ class WhiteIP_Plugin implements Typecho_Plugin_Interface
         $real_ip = isset($_SERVER) ? $_SERVER['REMOTE_ADDR'] : getenv("REMOTE_ADDR");
 
         if($real_ip !== NULL){
-            $config = json_decode(json_encode(unserialize(Helper::options()->plugin('WhiteIP'))));
+            // 兼容 Typecho 1.2 和 1.3+ 版本
+            $plugin_config = Helper::options()->plugin('WhiteIP');
+            if (is_string($plugin_config)) {
+                // Typecho 1.2 及以前：返回序列化字符串
+                $config = json_decode(json_encode(unserialize($plugin_config)));
+            } else {
+                // Typecho 1.3+：返回已反序列化的对象
+                $config = (object)$plugin_config;
+            }
+            //var_dump($config);
             if(empty($config->allow_ip)) {
                 $options = Typecho_Widget::widget('Widget_Options');
                 $config_url = trim($options->siteUrl,'/').'/'.trim(__TYPECHO_ADMIN_DIR__,'/').'/options-plugin.php?config=WhiteIP';
