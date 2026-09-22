@@ -5,7 +5,7 @@ if (!defined('__TYPECHO_ROOT_DIR__')) exit;
  * 
  * @package WhiteIP
  * @author Vex
- * @version 1.0.3
+ * @version 1.1.0
  * @link https://github.com/vndroid/WhiteIP
  */
 class WhiteIP_Plugin implements Typecho_Plugin_Interface
@@ -14,7 +14,7 @@ class WhiteIP_Plugin implements Typecho_Plugin_Interface
      * 插件版本号
      * @var string
      */
-    const _VERSION = '1.0.3';
+    const _VERSION = '1.1.0';
     
     /**
      * 激活插件方法,如果激活失败,直接抛出异常
