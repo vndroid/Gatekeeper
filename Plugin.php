@@ -4,8 +4,8 @@ if (!defined('__TYPECHO_ROOT_DIR__')) exit;
  * 管理后台 IP 白名单
  * 
  * @package WhiteIP
- * @author Cain
- * @version 1.0.2
+ * @author Kane
+ * @version 1.0.3
  * @link https://github.com/Vndroid/WhiteIP
  */
 class WhiteIP_Plugin implements Typecho_Plugin_Interface
@@ -14,7 +14,7 @@ class WhiteIP_Plugin implements Typecho_Plugin_Interface
      * 插件版本号
      * @var string
      */
-    const _VERSION = '1.0.2';
+    const _VERSION = '1.0.3';
     
     /**
      * 激活插件方法,如果激活失败,直接抛出异常

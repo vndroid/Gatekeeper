@@ -18,4 +18,7 @@ Only allow White IP list access Admin panel.
 
 [@fuzqing](https://github.com/fuzqing)
 
-[@Cain](https://github.com/Vndroid)
+
+### Thanks
+
+[@Vndroid](https://github.com/Vndroid)
