@@ -93,15 +93,23 @@ class Plugin implements PluginInterface
      * @access public
      * @param string $header 当前 header 字符串
      * @return string
+     * @throws Exception
      */
     public static function injectStyle(string $header): string
     {
+        // 已配置白名单时因横幅不会显示也无需注入样式
+        $config = Helper::options()->plugin('WhiteIP');
+        if (!empty($config->allow_ip)) {
+            return $header;
+        }
+
         $style = '<style>' . "\n"
             . '.whiteip-notice{box-sizing:border-box;width:100%;padding:12px 16px;background:#eafaf6;border:1px solid #1abc9c;border-radius:4px;text-align:center;line-height:1.5;}' . "\n"
             . '.whiteip-notice__text{font-size:14px;color:#1abc9c;font-weight:normal;}' . "\n"
             . '.whiteip-notice__link{font-size:14px;color:#1abc9c;text-decoration:underline;}' . "\n"
             . '.whiteip-notice__link:hover{text-decoration:none;}' . "\n"
             . '</style>';
+
         return $header . $style;
     }
 
