@@ -15,7 +15,7 @@ if (!defined('__TYPECHO_ROOT_DIR__')) {
 }
 
 /**
- * 后台访问管控插件 for Typecho
+ * 控制台 ACL 插件 for Typecho
  *
  * @package WhiteIP
  * @author Vex
