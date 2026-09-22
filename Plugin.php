@@ -19,11 +19,15 @@ if (!defined('__TYPECHO_ROOT_DIR__')) {
  *
  * @package WhiteIP
  * @author Vex
- * @version 1.1.0
+ * @version 1.2.0
  * @link https://github.com/vndroid/WhiteIP
  */
 class Plugin implements PluginInterface
 {
+    /**
+     * 标记是否需要显示横幅，避免在 check() 中构建 HTML
+     */
+    private static bool $showNotice = false;
     /**
      * 激活插件方法,如果激活失败,直接抛出异常
      *
@@ -34,6 +38,7 @@ class Plugin implements PluginInterface
     {
         \Typecho\Plugin::factory('admin/common.php')->begin = [self::class, 'check'];
         \Typecho\Plugin::factory('admin/header.php')->header = [self::class, 'injectStyle'];
+        \Typecho\Plugin::factory('admin/footer.php')->begin = [self::class, 'printNotice'];
     }
 
     /**
@@ -129,12 +134,8 @@ class Plugin implements PluginInterface
             $config = Helper::options()->plugin('WhiteIP');
 
             if (empty($config->allow_ip)) {
-                $options = Options::alloc();
-                $config_url = rtrim($options->siteUrl, '/') . '/' . trim(__TYPECHO_ADMIN_DIR__, '/') . '/options-plugin.php?config=WhiteIP';
-                echo '<div class="whiteip-notice">'
-                    . '<span class="whiteip-notice__text">请先进行设置可访问后台白名单，</span>'
-                    . '<a href="' . $config_url . '" class="whiteip-notice__link">马上去设置</a>'
-                    . '</div>';
+                // 未配置白名单，标记需要显示横幅，由 printNotice() 负责构建并输出
+                self::$showNotice = true;
             } else {
                 // 紧急通道：插件目录下存在 skipipcheck 文件时放行所有地址
                 if (file_exists(__DIR__ . '/skipipcheck')) {
@@ -156,5 +157,28 @@ class Plugin implements PluginInterface
                 }
             }
         }
+    }
+
+    /**
+     * 在 footer begin 钩子（位于 </body> 之前，即 <body> 内部）输出横幅
+     * 通过 JS insertAdjacentHTML 将横幅插入到 <body> 最顶部，保证 HTML 结构合法
+     *
+     * @access public
+     * @return void
+     */
+    public static function printNotice(): void
+    {
+        if (!self::$showNotice) {
+            return;
+        }
+
+        $options = Options::alloc();
+        $config_url = rtrim($options->siteUrl, '/') . '/' . trim(__TYPECHO_ADMIN_DIR__, '/') . '/options-plugin.php?config=WhiteIP';
+        $html = '<div class="whiteip-notice">'
+            . '<span class="whiteip-notice__text">请先进行设置可访问后台白名单，</span>'
+            . '<a href="' . $config_url . '" class="whiteip-notice__link">马上去设置</a>'
+            . '</div>';
+
+        echo '<script>document.body.insertAdjacentHTML("afterbegin", ' . json_encode($html) . ')</script>';
     }
 }
