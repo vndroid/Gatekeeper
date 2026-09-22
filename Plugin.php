@@ -37,8 +37,9 @@ class Plugin implements PluginInterface
     public static function activate(): void
     {
         \Typecho\Plugin::factory('admin/common.php')->begin = [self::class, 'check'];
-        \Typecho\Plugin::factory('admin/header.php')->header = [self::class, 'injectStyle'];
         \Typecho\Plugin::factory('admin/footer.php')->begin = [self::class, 'printNotice'];
+        \Typecho\Plugin::factory('admin/header.php')->header = [self::class, 'injectStyle'];
+        \Typecho\Plugin::factory('admin/menu.php')->navBar = [self::class, 'addAdminPageBar'];
     }
 
     /**
@@ -61,24 +62,24 @@ class Plugin implements PluginInterface
     public static function config(Form $form): void
     {
         /** 允许登陆后台的ip */
-        $allow_ip = new Text(
-            'allow_ip',
+        $allowPool = new Text(
+            'allowPool',
             null,
             null,
-            _t('管理后台 IP 白名单'),
-            _t('请输入 IP 地址，如果有多个请使用英文逗号隔开')
+            _t('管理后台访问白名单'),
+            _t('请输入 IP 地址，多个请使用英文逗号分隔')
         );
-        $form->addInput($allow_ip);
+        $form->addInput($allowPool);
 
         /** 跳转链接 */
-        $location_url = new Text(
-            'location_url',
+        $rewriteUrl = new Text(
+            'rewriteUrl',
             null,
             'https://www.google.com/',
             _t('跳转链接'),
             _t('请输入标准的 URL 地址（包括 https:// 协议头），白名单外的 IP 访问后台将会跳转至这个 URL')
         );
-        $form->addInput($location_url);
+        $form->addInput($rewriteUrl);
     }
 
     /**
@@ -93,6 +94,20 @@ class Plugin implements PluginInterface
     }
 
     /**
+     * 在后台导航栏插件状态显示
+     * @throws Exception
+     */
+    public static function addAdminPageBar(): void
+    {
+        $config = Options::alloc()->plugin('WhiteIP');
+        if ($config->allowPool != '') {
+            echo '<span class="message success">' . htmlspecialchars('后台访问限制') . '</span>';
+        } else {
+            echo '<span class="message error">' . htmlspecialchars('后台访问限制') . '</span>';
+        }
+    }
+
+    /**
      * 向后台 <head> 注入插件独立样式
      *
      * @access public
@@ -104,15 +119,15 @@ class Plugin implements PluginInterface
     {
         // 已配置白名单时因横幅不会显示也无需注入样式
         $config = Helper::options()->plugin('WhiteIP');
-        if (!empty($config->allow_ip)) {
+        if (!empty($config->allowPool)) {
             return $header;
         }
 
         $style = '<style>' . "\n"
-            . '.whiteip-notice{box-sizing:border-box;width:100%;padding:12px 16px;background:#eafaf6;border:1px solid #1abc9c;border-radius:4px;text-align:center;line-height:1.5;}' . "\n"
-            . '.whiteip-notice__text{font-size:14px;color:#1abc9c;font-weight:normal;}' . "\n"
-            . '.whiteip-notice__link{font-size:14px;color:#1abc9c;text-decoration:underline;}' . "\n"
-            . '.whiteip-notice__link:hover{text-decoration:none;}' . "\n"
+            . '.white-ip-self-notice{box-sizing:border-box;width:100%;padding:12px 16px;background:#eafaf6;border:1px solid #1abc9c;border-radius:4px;text-align:center;line-height:1.5;}' . "\n"
+            . '.white-ip-self-notice__text{font-size:14px;color:#1abc9c;font-weight:normal;}' . "\n"
+            . '.white-ip-self-notice__link{font-size:14px;color:#1abc9c;text-decoration:underline;}' . "\n"
+            . '.white-ip-self-notice__link:hover{text-decoration:none;}' . "\n"
             . '</style>';
 
         return $header . $style;
@@ -133,7 +148,7 @@ class Plugin implements PluginInterface
         if ($real_ip !== null) {
             $config = Helper::options()->plugin('WhiteIP');
 
-            if (empty($config->allow_ip)) {
+            if (empty($config->allowPool)) {
                 // 未配置白名单，标记需要显示横幅，由 printNotice() 负责构建并输出
                 self::$showNotice = true;
             } else {
@@ -142,16 +157,16 @@ class Plugin implements PluginInterface
                     return;
                 }
 
-                $allow_ip_arr = str_replace('，', ',', $config->allow_ip);
-                $allow_ip = explode(',', $allow_ip_arr);
+                $allowPoolArray = str_replace('，', ',', $config->allowPool);
+                $allowPool = explode(',', $allowPoolArray);
 
-                $location_url = trim($config->location_url) ? trim($config->location_url) : 'https://www.google.com/ncr';
-                if (!in_array('0.0.0.0', $allow_ip)) {
-                    if (!in_array($real_ip, $allow_ip)) {
+                $rewriteUrl = trim($config->rewriteUrl) ? trim($config->rewriteUrl) : 'https://www.google.com/ncr';
+                if (!in_array('0.0.0.0', $allowPool)) {
+                    if (!in_array($real_ip, $allowPool)) {
                         Cookie::delete('__typecho_uid');
                         Cookie::delete('__typecho_authCode');
                         @session_destroy();
-                        header('Location: ' . $location_url);
+                        header('Location: ' . $rewriteUrl);
                         exit;
                     }
                 }
@@ -174,9 +189,9 @@ class Plugin implements PluginInterface
 
         $options = Options::alloc();
         $config_url = rtrim($options->siteUrl, '/') . '/' . trim(__TYPECHO_ADMIN_DIR__, '/') . '/options-plugin.php?config=WhiteIP';
-        $html = '<div class="whiteip-notice">'
-            . '<span class="whiteip-notice__text">请先进行设置可访问后台白名单，</span>'
-            . '<a href="' . $config_url . '" class="whiteip-notice__link">马上去设置</a>'
+        $html = '<div class="white-ip-self-notice">'
+            . '<span class="white-ip-self-notice__text">请先进行设置可访问后台白名单，</span>'
+            . '<a href="' . $config_url . '" class="white-ip-self-notice__link">马上去设置</a>'
             . '</div>';
 
         echo '<script>document.body.insertAdjacentHTML("afterbegin", ' . json_encode($html) . ')</script>';
