@@ -16,7 +16,7 @@ if (!defined('__TYPECHO_ROOT_DIR__')) {
 
 /**
  * 后台访问管控插件 for Typecho
- * 
+ *
  * @package WhiteIP
  * @author Vex
  * @version 1.1.0
@@ -26,19 +26,19 @@ class Plugin implements PluginInterface
 {
     /**
      * 激活插件方法,如果激活失败,直接抛出异常
-     * 
+     *
      * @access public
      * @return void
      */
-    public static function activate()
+    public static function activate(): void
     {
         \Typecho\Plugin::factory('admin/common.php')->begin = [self::class, 'check'];
-        \Typecho\Plugin::factory('Widget_Login')->loginSucceed = array('WhiteIP_Plugin', 'check');
+        \Typecho\Plugin::factory('admin/header.php')->header = [self::class, 'injectStyle'];
     }
-    
+
     /**
      * 禁用插件方法,如果禁用失败,直接抛出异常
-     * 
+     *
      * @access public
      * @return void
      */
@@ -48,12 +48,12 @@ class Plugin implements PluginInterface
 
     /**
      * 获取插件配置面板
-     * 
+     *
      * @access public
      * @param Form $form 配置面板
      * @return void
      */
-    public static function config(Form $form)
+    public static function config(Form $form): void
     {
         /** 允许登陆后台的ip */
         $allow_ip = new Text(
@@ -75,16 +75,34 @@ class Plugin implements PluginInterface
         );
         $form->addInput($location_url);
     }
-    
+
     /**
      * 个人用户的配置面板
-     * 
+     *
      * @access public
      * @param Form $form
      * @return void
      */
     public static function personalConfig(Form $form)
     {
+    }
+
+    /**
+     * 向后台 <head> 注入插件独立样式
+     *
+     * @access public
+     * @param string $header 当前 header 字符串
+     * @return string
+     */
+    public static function injectStyle(string $header): string
+    {
+        $style = '<style>' . "\n"
+            . '.whiteip-notice{box-sizing:border-box;width:100%;padding:12px 16px;background:#eafaf6;border:1px solid #1abc9c;border-radius:4px;text-align:center;line-height:1.5;}' . "\n"
+            . '.whiteip-notice__text{font-size:14px;color:#1abc9c;font-weight:normal;}' . "\n"
+            . '.whiteip-notice__link{font-size:14px;color:#1abc9c;text-decoration:underline;}' . "\n"
+            . '.whiteip-notice__link:hover{text-decoration:none;}' . "\n"
+            . '</style>';
+        return $header . $style;
     }
 
     /**
@@ -96,7 +114,6 @@ class Plugin implements PluginInterface
      */
     public static function check(): void
     {
-        static $real_ip = NULL;
         // 判断服务器是否允许 $_SERVER，不允许则使用 getenv 获取
         $real_ip = isset($_SERVER) ? $_SERVER['REMOTE_ADDR'] : getenv('REMOTE_ADDR');
 
@@ -106,14 +123,19 @@ class Plugin implements PluginInterface
             if (empty($config->allow_ip)) {
                 $options = Options::alloc();
                 $config_url = rtrim($options->siteUrl, '/') . '/' . trim(__TYPECHO_ADMIN_DIR__, '/') . '/options-plugin.php?config=WhiteIP';
-                echo '<span style="text-align:center;display:block;margin:auto;font-size:1.5em;color:#1abc9c">请先进行设置可访问后台白名单，<a href="' . $config_url . '">马上去设置</a></span>';
+                echo '<div class="whiteip-notice">'
+                    . '<span class="whiteip-notice__text">请先进行设置可访问后台白名单，</span>'
+                    . '<a href="' . $config_url . '" class="whiteip-notice__link">马上去设置</a>'
+                    . '</div>';
             } else {
+                // 紧急通道：插件目录下存在 skipipcheck 文件时放行所有地址
+                if (file_exists(__DIR__ . '/skipipcheck')) {
+                    return;
+                }
+
                 $allow_ip_arr = str_replace('，', ',', $config->allow_ip);
                 $allow_ip = explode(',', $allow_ip_arr);
-                
-                // 误操作紧急通道，去掉下行注释即可放行全部地址
-                //$allow_ip[] = '0.0.0.0';
-                
+
                 $location_url = trim($config->location_url) ? trim($config->location_url) : 'https://www.google.com/ncr';
                 if (!in_array('0.0.0.0', $allow_ip)) {
                     if (!in_array($real_ip, $allow_ip)) {
