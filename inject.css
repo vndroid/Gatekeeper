@@ -1,0 +1,26 @@
+.white-ip-plugin-notice {
+    box-sizing: border-box;
+    width: 100%;
+    padding: 12px 16px;
+    background: #eafaf6;
+    border: 1px solid #1abc9c;
+    border-radius: 4px;
+    text-align: center;
+    line-height: 1.5;
+}
+
+.white-ip-plugin-notice__text {
+    font-size: 14px;
+    color: #1abc9c;
+    font-weight: normal;
+}
+
+.white-ip-plugin-notice__link {
+    font-size: 14px;
+    color: #1abc9c;
+    text-decoration: underline;
+}
+
+.white-ip-plugin-notice__link:hover {
+    text-decoration: none;
+}

@@ -101,9 +101,9 @@ class Plugin implements PluginInterface
     {
         $config = Options::alloc()->plugin('WhiteIP');
         if ($config->allowPool != '') {
-            echo '<span class="message success">' . htmlspecialchars('后台访问限制') . '</span>';
+            echo '<span class="message success">' . htmlspecialchars('ACL 已启用') . '</span>';
         } else {
-            echo '<span class="message error">' . htmlspecialchars('后台访问限制') . '</span>';
+            echo '<span class="message error">' . htmlspecialchars('ACL 未启用') . '</span>';
         }
     }
 
@@ -118,19 +118,18 @@ class Plugin implements PluginInterface
     public static function injectStyle(string $header): string
     {
         // 已配置白名单时因横幅不会显示也无需注入样式
-        $config = Helper::options()->plugin('WhiteIP');
+        $config = Options::alloc()->plugin(basename(__DIR__));
         if (!empty($config->allowPool)) {
             return $header;
+        } else {
+            $cssFile = __DIR__ . '/inject.css';
+            $cssContent = file_exists($cssFile) ? file_get_contents($cssFile) : '';
+            $cssContent = preg_replace('/\/\*.*?\*\//s', '', $cssContent);
+            $cssContent = preg_replace('/\s+/', ' ', $cssContent);
+            $cssContent = preg_replace('/\s*([{}:;,>~+])\s*/', '$1', $cssContent);
+            $cssContent = str_replace(';}', '}', $cssContent);
+            return $header . '<style>' . $cssContent . '</style>';
         }
-
-        $style = '<style>' . "\n"
-            . '.white-ip-self-notice{box-sizing:border-box;width:100%;padding:12px 16px;background:#eafaf6;border:1px solid #1abc9c;border-radius:4px;text-align:center;line-height:1.5;}' . "\n"
-            . '.white-ip-self-notice__text{font-size:14px;color:#1abc9c;font-weight:normal;}' . "\n"
-            . '.white-ip-self-notice__link{font-size:14px;color:#1abc9c;text-decoration:underline;}' . "\n"
-            . '.white-ip-self-notice__link:hover{text-decoration:none;}' . "\n"
-            . '</style>';
-
-        return $header . $style;
     }
 
     /**
@@ -188,12 +187,13 @@ class Plugin implements PluginInterface
         }
 
         $options = Options::alloc();
-        $config_url = rtrim($options->siteUrl, '/') . '/' . trim(__TYPECHO_ADMIN_DIR__, '/') . '/options-plugin.php?config=WhiteIP';
-        $html = '<div class="white-ip-self-notice">'
-            . '<span class="white-ip-self-notice__text">请先进行设置可访问后台白名单，</span>'
-            . '<a href="' . $config_url . '" class="white-ip-self-notice__link">马上去设置</a>'
+        $config_url = rtrim($options->siteUrl, '/') . '/' . trim(__TYPECHO_ADMIN_DIR__, '/') . '/options-plugin.php?config=' . basename(__DIR__);
+        $html = '<div class="white-ip-plugin-notice">'
+            . '<span class="white-ip-plugin-notice__text">请先进行设置可访问后台白名单，</span>'
+            . '<a href="' . $config_url . '" class="white-ip-plugin-notice__link">马上去设置</a>'
             . '</div>';
+        $template = '<script>document.body.insertAdjacentHTML("afterbegin", ' . json_encode($html) . ')</script>';
 
-        echo '<script>document.body.insertAdjacentHTML("afterbegin", ' . json_encode($html) . ')</script>';
+        echo $template;
     }
 }
