@@ -5,11 +5,17 @@ if (!defined('__TYPECHO_ROOT_DIR__')) exit;
  * 
  * @package WhiteIP
  * @author Cain
- * @version 1.0.0
+ * @version 1.0.2
  * @link https://github.com/Vndroid/WhiteIP
  */
 class WhiteIP_Plugin implements Typecho_Plugin_Interface
 {
+    /**
+     * 插件版本号
+     * @var string
+     */
+    const _VERSION = '1.0.2';
+    
     /**
      * 激活插件方法,如果激活失败,直接抛出异常
      * 
@@ -17,7 +23,6 @@ class WhiteIP_Plugin implements Typecho_Plugin_Interface
      * @return void
      * @throws Typecho_Plugin_Exception
      */
-
     public static function activate()
     {
         Typecho_Plugin::factory('admin/common.php')->begin = array('WhiteIP_Plugin', 'check');
@@ -43,8 +48,8 @@ class WhiteIP_Plugin implements Typecho_Plugin_Interface
      */
     public static function config(Typecho_Widget_Helper_Form $form)
     {
-        /** 允许登陆后台的 IP */
-        $allow_ip = new Typecho_Widget_Helper_Form_Element_Text('allow_ip', NULL, NULL, _t('后台管理IP白名单'),'请输入 IP 地址，如果有多个请使用英文逗号隔开');
+        /** 允许登陆后台的ip */
+        $allow_ip = new Typecho_Widget_Helper_Form_Element_Text('allow_ip', NULL, NULL, _t('管理后台 IP 白名单'),'请输入 IP 地址，如果有多个请使用英文逗号隔开');
         $form->addInput($allow_ip);
         /** 跳转链接 */
         $location_url = new Typecho_Widget_Helper_Form_Element_Text('location_url', NULL, 'https://www.google.com/', _t('跳转链接'),'请输入标准的 URL 地址（包括 http://），白名单外的 IP 访问后台将会跳转至这个 URL');
@@ -77,7 +82,7 @@ class WhiteIP_Plugin implements Typecho_Plugin_Interface
             if(empty($config->allow_ip)) {
                 $options = Typecho_Widget::widget('Widget_Options');
                 $config_url = trim($options->siteUrl,'/').'/'.trim(__TYPECHO_ADMIN_DIR__,'/').'/options-plugin.php?config=WhiteIP';
-                echo '请先进行设置可访问后台白名单，<a href="'.$config_url.'">马上去设置</a>';
+                echo '<span style="text-align: center;display: block;margin: auto;font-size: 1.5em;color:#1abc9c">请先进行设置可访问后台白名单，<a href="'.$config_url.'">马上去设置</a></span>';
             } else {
                 $allow_ip_arr = str_replace('，',',',$config->allow_ip);
                 $allow_ip = explode(',', $allow_ip_arr);
