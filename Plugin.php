@@ -20,11 +20,27 @@ if (!defined('__TYPECHO_ROOT_DIR__')) {
  *
  * @package Gatekeeper
  * @author Vex
- * @version 1.0.0
+ * @version 1.1.0
  * @link https://github.com/vndroid/Gatekeeper
  */
 class Plugin implements PluginInterface
 {
+    /**
+     * 紧急通道文件名（位于插件目录下，点开头的隐藏文件）。
+     * 只有属主为 root、且在有效期内的普通文件才会生效，见 isBypassActive()。
+     */
+    private const BYPASS_FILE = '.bypass';
+
+    /**
+     * 紧急通道有效期（秒），以文件 mtime 起算。过期后自动失效，需重新 touch 才能继续使用。
+     */
+    private const BYPASS_TTL = 1800;
+
+    /**
+     * 允许的 mtime 未来偏差（秒），容忍轻微的时钟漂移
+     */
+    private const BYPASS_CLOCK_SKEW = 60;
+
     /**
      * 标记是否需要显示横幅，避免在 check() 中构建 HTML
      */
@@ -76,7 +92,9 @@ class Plugin implements PluginInterface
             null,
             null,
             _t('管理后台访问白名单'),
-            _t('请输入 IP 地址，多个请使用英文逗号分隔')
+            _t('请输入 IP 地址，多个请使用英文逗号分隔。'
+                . '误配置被锁在外面时，可在服务器上以 root 身份执行 <code>touch %s</code> 临时放行所有地址（%d 分钟内有效，过期自动失效）',
+                htmlspecialchars(__DIR__ . '/' . self::BYPASS_FILE), intdiv(self::BYPASS_TTL, 60))
         );
         $form->addInput($allowPool);
 
@@ -152,19 +170,94 @@ class Plugin implements PluginInterface
      */
     private static function isIpAllowed(string $realIp, $config): bool
     {
-        // 紧急通道：插件目录下存在 skipipcheck 文件时放行所有地址
-        if (file_exists(__DIR__ . '/skipipcheck')) {
-            return true;
-        }
-
         $allowPoolArray = str_replace('，', ',', $config->allowPool);
         $allowPool = explode(',', $allowPoolArray);
 
-        if (in_array('0.0.0.0', $allowPool)) {
+        if (in_array($realIp, $allowPool, true)) {
             return true;
         }
 
-        return in_array($realIp, $allowPool);
+        // 1.1.0 起 0.0.0.0 不再是"全放行"魔法值：被锁在外面的人本来就进不了配置面板去填它，
+        // 它唯一真实的触发方式是误粘贴，只有风险没有收益。这里只记日志提醒，不放行。
+        if (in_array('0.0.0.0', array_map('trim', $allowPool), true)) {
+            self::log('白名单中包含 0.0.0.0，自 1.1.0 起它不再放行所有地址，请删除该项；'
+                . '需要临时放行请使用紧急通道文件 ' . self::BYPASS_FILE);
+        }
+
+        return self::isBypassActive();
+    }
+
+    /**
+     * 紧急通道：插件目录下存在满足以下全部条件的 .bypass 文件时，临时放行所有地址。
+     *
+     *   - 是普通文件，不是符号链接（lstat 判定，不跟随链接）——否则 Web 进程可以
+     *     建一个指向任意 root 文件的软链冒充；
+     *   - 硬链接数为 1——否则可以硬链到别处的 root 文件冒充；
+     *   - 属主 uid 为 0（root）——PHP 任意文件写入漏洞以 Web 用户身份运行，建不出 root 文件，
+     *     于是开关的信任等级被抬到"已拥有服务器/容器 root 权限"，与网站本身的漏洞脱钩；
+     *   - 组和其他用户不可写；
+     *   - PHP 进程自身不是 root——否则 Web 进程写出的文件天然属于 root，上面的判定全部失效；
+     *   - mtime 在 BYPASS_TTL 有效期内——忘记删除也会自动失效，不会变成永久后门。
+     *
+     * 每次生效与每次被拒都会写日志，便于事后审计与排查"为什么开关不生效"。
+     *
+     * @access private
+     * @return bool
+     */
+    private static function isBypassActive(): bool
+    {
+        $path = __DIR__ . '/' . self::BYPASS_FILE;
+        clearstatcache(true, $path);
+        $stat = @lstat($path);
+        if ($stat === false) {
+            return false;
+        }
+
+        $reason = null;
+        $age = time() - $stat['mtime'];
+
+        if (($stat['mode'] & 0170000) !== 0100000) {
+            $reason = '不是普通文件（可能是符号链接或目录）';
+        } elseif ($stat['nlink'] !== 1) {
+            $reason = '存在硬链接（nlink=' . $stat['nlink'] . '）';
+        } elseif ($stat['uid'] !== 0) {
+            $reason = '属主不是 root（uid=' . $stat['uid'] . '）';
+        } elseif (($stat['mode'] & 0022) !== 0) {
+            $reason = sprintf('组或其他用户可写（mode=%04o）', $stat['mode'] & 07777);
+        } elseif (function_exists('posix_geteuid') && posix_geteuid() === 0) {
+            $reason = 'PHP 进程以 root 运行，无法区分 root 创建的文件与 Web 进程写出的文件';
+        } elseif ($age < -self::BYPASS_CLOCK_SKEW) {
+            $reason = 'mtime 位于未来';
+        } elseif ($age > self::BYPASS_TTL) {
+            $reason = sprintf('已过期（创建于 %d 分钟前，有效期 %d 分钟）', intdiv($age, 60), intdiv(self::BYPASS_TTL, 60));
+        }
+
+        if ($reason !== null) {
+            self::log('紧急通道文件 ' . self::BYPASS_FILE . ' 未生效：' . $reason);
+            return false;
+        }
+
+        self::log(sprintf(
+            '紧急通道生效，放行非白名单请求（剩余 %d 分钟）',
+            intdiv(max(0, self::BYPASS_TTL - $age), 60)
+        ));
+        return true;
+    }
+
+    /**
+     * 写入 PHP 错误日志，附带来源 IP 与请求 URI。
+     * URI 由客户端控制，去掉控制字符防止日志注入伪造行。
+     *
+     * @access private
+     * @param string $message
+     * @return void
+     */
+    private static function log(string $message): void
+    {
+        $ip = self::getRealIp() ?? '-';
+        $uri = $_SERVER['REQUEST_URI'] ?? '-';
+        $line = sprintf('[Gatekeeper] %s ip=%s uri=%s', $message, $ip, $uri);
+        error_log(preg_replace('/[\x00-\x1F\x7F]/', '?', $line));
     }
 
     /**
