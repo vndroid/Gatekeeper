@@ -1,6 +1,6 @@
 <?php
 
-namespace TypechoPlugin\WhiteIP;
+namespace TypechoPlugin\Gatekeeper;
 
 use Typecho\Cookie;
 use Typecho\Plugin\PluginInterface;
@@ -17,10 +17,10 @@ if (!defined('__TYPECHO_ROOT_DIR__')) {
 /**
  * 控制台 ACL 插件 for Typecho
  *
- * @package WhiteIP
+ * @package Gatekeeper
  * @author Vex
- * @version 1.2.0
- * @link https://github.com/vndroid/WhiteIP
+ * @version 1.0.0
+ * @link https://github.com/vndroid/Gatekeeper
  */
 class Plugin implements PluginInterface
 {
@@ -99,7 +99,7 @@ class Plugin implements PluginInterface
      */
     public static function addAdminPageBar(): void
     {
-        $config = Options::alloc()->plugin('WhiteIP');
+        $config = Options::alloc()->plugin('Gatekeeper');
         if ($config->allowPool != '') {
             echo '<span class="message success">' . htmlspecialchars('ACL 已启用') . '</span>';
         } else {
@@ -145,7 +145,7 @@ class Plugin implements PluginInterface
         $real_ip = isset($_SERVER) ? $_SERVER['REMOTE_ADDR'] : getenv('REMOTE_ADDR');
 
         if ($real_ip !== null) {
-            $config = Helper::options()->plugin('WhiteIP');
+            $config = Helper::options()->plugin('Gatekeeper');
 
             if (empty($config->allowPool)) {
                 // 未配置白名单，标记需要显示横幅，由 printNotice() 负责构建并输出

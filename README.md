@@ -1,4 +1,4 @@
-# WhiteIP
+# Gatekeeper
 
 ## Limit Admin Panel Login Plugin For Typecho
 
@@ -11,7 +11,7 @@ Only allow White IP list access Admin panel.
 ### Notice
 
 * When the plugin update, please disable the plugin before updating.
-* Please change the plugin directory name to WhiteIP.
+* Please change the plugin directory name to Gatekeeper.
 * IF SET ERROR IP, UNCOMMENT-OUT Plugin.php #91.
 
 ### Author
