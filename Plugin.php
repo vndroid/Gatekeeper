@@ -4,9 +4,9 @@ if (!defined('__TYPECHO_ROOT_DIR__')) exit;
  * 管理后台 IP 白名单
  * 
  * @package WhiteIP
- * @author Kane
+ * @author Vex
  * @version 1.0.3
- * @link https://github.com/Vndroid/WhiteIP
+ * @link https://github.com/vndroid/WhiteIP
  */
 class WhiteIP_Plugin implements Typecho_Plugin_Interface
 {
